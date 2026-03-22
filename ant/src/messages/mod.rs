@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::messages::{config::{
+use crate::{messages::{config::{
     AddChannelIdToList, AddEncryptionIdToList, AssignChannel, ChannelId, ChannelPeriod,
     ChannelRfFrequency, ChannelSearchPriority, ChannelSearchSharing, ConfigEncryptionIdList,
     ConfigIdList, ConfigureAdvancedBurst, ConfigureEventBuffer, ConfigureEventFilter,
@@ -17,7 +17,7 @@ use crate::messages::{config::{
     SetEncryptionInfoEncryptionId, SetEncryptionInfoRandomSeed,
     SetEncryptionInfoUserInformationString, SetEncryptionKey, SetNetworkKey,
     SetSelectiveDataUpdateMask, StoreEncryptionKeyInNvm, TransmitPower, UnAssignChannel,
-}, control::OpenRxScanMode};
+}, control::OpenRxScanMode}};
 use channel::{ChannelEvent, ChannelResponse};
 use control::{CloseChannel, OpenChannel, RequestMessage, ResetSystem, SleepMessage};
 use data::{

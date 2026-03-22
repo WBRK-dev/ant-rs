@@ -41,13 +41,13 @@ pub struct MainDataPage {
 #[derive(PackedStruct, new, PartialEq, Copy, Clone, Debug)]
 #[packed_struct(bit_numbering = "msb0", endian = "lsb", size_bytes = "8")]
 pub struct PowerDataPage {
+    #[packed_field(bit = "0")]
+    pub page_change_toggle: bool,
     #[packed_field(bits = "1:7")]
     data_page_number: Integer<u8, packed_bits::Bits<7>>,
-    #[packed_field(bits = "0")]
-    pub page_change_toggle: bool,
-    #[packed_field(bytes = "1")]
+    #[packed_field(byte = "1")]
     pub event_count: u8,
-    #[packed_field(bytes = "2")]
+    #[packed_field(byte = "2")]
     pub cadance: u8,
     #[packed_field(bytes = "3:4")]
     pub accumulated_power: u16,
@@ -55,8 +55,55 @@ pub struct PowerDataPage {
     pub instantaneous_power: Integer<u16, packed_bits::Bits<12>>,
     #[packed_field(bits = "52:55")]
     pub trainer_status: u8,
-    #[packed_field(bytes = "7")]
+    #[packed_field(byte = "7")]
     pub flag_state_bf: u8,
+}
+
+#[derive(PackedStruct, new, PartialEq, Copy, Clone, Debug)]
+#[packed_struct(bit_numbering = "msb0", endian = "lsb", size_bytes = "8")]
+pub struct UserConfigurationDataPage {
+    #[packed_field(byte = "0")]
+    data_page_number: u8,
+    #[packed_field(bytes = "1:2")]
+    pub user_weight: u16,
+    #[packed_field(byte = "3")]
+    _reserved: u8,
+    #[packed_field(bits = "32:36")]
+    pub bicycle_wheel: u8,
+    #[packed_field(bits = "37:47")]
+    pub bicycle_weight: u16,
+    #[packed_field(byte = "6")]
+    pub bicycle_wheel_diameter: u8,
+    #[packed_field(byte = "7")]
+    pub gear_ratio: u8,
+}
+
+#[derive(PackedStruct, new, PartialEq, Copy, Clone, Debug)]
+#[packed_struct(bit_numbering = "msb0", endian = "lsb", size_bytes = "8")]
+pub struct WindResistanceDataPage {
+    #[packed_field(byte = "0")]
+    data_page_number: u8,
+    #[packed_field(bytes = "1:4")]
+    _reserved: [u8; 4],
+    #[packed_field(byte = "5")]
+    pub wind_resistance_coefficient: u8,
+    #[packed_field(byte = "6")]
+    pub wind_speed: u8,
+    #[packed_field(byte = "7")]
+    pub drafting_factor: u8,
+}
+
+#[derive(PackedStruct, new, PartialEq, Copy, Clone, Debug)]
+#[packed_struct(bit_numbering = "msb0", endian = "lsb", size_bytes = "8")]
+pub struct TrackResistanceDataPage {
+    #[packed_field(byte = "0")]
+    data_page_number: u8,
+    #[packed_field(bytes = "1:4")]
+    _reserved: [u8; 4],
+    #[packed_field(bytes = "5:6")]
+    pub grade: u16,
+    #[packed_field(byte = "7")]
+    pub coefficient_of_rolling_resistance: u8,
 }
 
 #[derive(PackedStruct, new, PartialEq, Copy, Clone, Debug)]
@@ -65,8 +112,8 @@ pub struct BasicResistanceDataPage {
     #[packed_field(byte = "0")]
     data_page_number: u8,
     #[packed_field(bytes = "1:6")]
-    pub reserved: [u8; 6],
-    #[packed_field(bytes = "7")]
+    _reserved: [u8; 6],
+    #[packed_field(byte = "7")]
     pub total_resistance: u8,
 }
 
@@ -76,9 +123,7 @@ pub struct TargetPowerDataPage {
     #[packed_field(byte = "0")]
     data_page_number: u8,
     #[packed_field(bytes = "1:5")]
-    pub reserved: [u8; 5],
-    #[packed_field(bytes = "6")]
-    pub total_power_lsb: u8,
-    #[packed_field(bytes = "7")]
-    pub total_power_rsb: u8,
+    _reserved: [u8; 5],
+    #[packed_field(bytes = "6:7")]
+    pub total_power: u16,
 }

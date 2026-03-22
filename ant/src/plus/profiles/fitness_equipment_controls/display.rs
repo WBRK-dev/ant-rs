@@ -8,10 +8,10 @@ use crate::messages::{AntMessage, RxMessage, TxMessage, TxMessageChannelConfig, 
 // use crate::plus::common::datapages::MANUFACTURER_SPECIFIC_RANGE;
 use crate::plus::common::msg_handler::{ChannelConfig, MessageHandler};
 use crate::plus::profiles::fitness_equipment_controls::{
-    DataPageNumbers, EquipmentType, Error, MainDataPage, MonitorTxDataPage,
-    Period, PowerDataPage, DATA_PAGE_NUMBER_MASK, DEVICE_TYPE
+    BasicResistanceDataPage, DATA_PAGE_NUMBER_MASK, DEVICE_TYPE, DataPageNumbers, EquipmentType, Error, MainDataPage, MonitorTxDataPage, Period, PowerDataPage, TargetPowerDataPage, TrackResistanceDataPage, UserConfigurationDataPage, WindResistanceDataPage
 };
 use crate::plus::NETWORK_RF_FREQUENCY;
+use crate::plus::profiles::speed_and_cadence;
 
 use packed_struct::prelude::{packed_bits::Bits, Integer};
 use packed_struct::{PackedStruct, PrimitiveEnum};
@@ -31,6 +31,10 @@ pub struct Display<T: TxHandler<TxMessage>, R: RxHandler<AntMessage>> {
     real_speed: Option<u8>,
     elapsed_time: u16,
     distance: u16,
+    cadence: u8,
+    power: u16,
+    last_power: u16,
+    power_event_count: u8,
 }
 
 pub struct DisplayConfig {
@@ -80,6 +84,10 @@ impl<T: TxHandler<TxMessage>, R: RxHandler<AntMessage>> Display<T, R> {
             real_speed: None,
             elapsed_time: 0,
             distance: 0,
+            cadence: 0,
+            power: 0,
+            last_power: 0,
+            power_event_count: 0,
         }
     }
 
@@ -162,8 +170,35 @@ impl<T: TxHandler<TxMessage>, R: RxHandler<AntMessage>> Display<T, R> {
 
                     MonitorTxDataPage::MainDataPage(page)
                 },
-                DataPageNumbers::PowerDataPage =>
-                    MonitorTxDataPage::PowerDataPage(PowerDataPage::unpack(data)?),
+                DataPageNumbers::PowerDataPage => {
+                    let page = PowerDataPage::unpack(data)?;
+
+                    self.cadence = page.cadance;
+
+                    let diff_power = if page.accumulated_power >= self.last_power {
+                        page.accumulated_power - self.last_power
+                    } else {
+                        (65536u32 + page.accumulated_power as u32 - self.last_power as u32) as u16
+                    };
+
+                    let diff_event_count = if page.event_count >= self.power_event_count {
+                        page.event_count - self.power_event_count
+                    } else {
+                        (256u16 + page.event_count as u16 - self.power_event_count as u16) as u8
+                    };
+
+                    if diff_event_count > 0 {
+                        self.power = diff_power / diff_event_count as u16;
+                    } else {
+                        // Optionally handle zero difference (e.g., keep previous power or log)
+                        // For now, do nothing to avoid division by zero
+                    }
+
+                    self.last_power = page.accumulated_power;
+                    self.power_event_count = page.event_count;
+
+                    MonitorTxDataPage::PowerDataPage(page)
+                },
             };
             return Ok(parsed);
         }
@@ -243,18 +278,91 @@ impl<T: TxHandler<TxMessage>, R: RxHandler<AntMessage>> Display<T, R> {
         self.distance
     }
 
+    pub fn get_candence(&self) -> u8 {
+        self.cadence
+    }
+
+    pub fn get_power(&self) -> u16 {
+        self.power
+    }
+
+    pub fn set_user_configuration(
+        &mut self,
+        user_weight: u16,
+        bicycle_wheel: u8,
+        bicycle_weight: u16,
+        bicycle_wheel_diameter: u8,
+        gear_ratio: u8,
+    ) -> Result<(), TxError> {
+        let mut message: TxMessageData = AcknowledgedData::new(0, UserConfigurationDataPage::new(
+            0x37,
+            user_weight * 100,
+            0,
+            bicycle_wheel,
+            bicycle_weight * 20,
+            bicycle_wheel_diameter,
+            gear_ratio,
+        ).pack().unwrap()).into();
+        message.set_channel(self.msg_handler.get_channel());
+        self.tx.try_send(message.into())?;
+        Ok(())
+    }
+
+    pub fn set_basic_resistance(
+        &mut self,
+        resistance: u8,
+    ) -> Result<(), TxError> {
+        let mut message: TxMessageData = AcknowledgedData::new(0, BasicResistanceDataPage::new(
+            0x30,
+            [0, 0, 0, 0, 0, 0],
+            resistance * 2,
+        ).pack().unwrap()).into();
+        message.set_channel(self.msg_handler.get_channel());
+        self.tx.try_send(message.into())?;
+        Ok(())
+    }
+
+    pub fn set_wind_resistance(
+        &mut self,
+        wind_resistance_coefficient: u8,
+        wind_speed: i8,
+        drafting_factor: u8,
+    ) -> Result<(), TxError> {
+        let mut message: TxMessageData = AcknowledgedData::new(0, WindResistanceDataPage::new(
+            0x32,
+            [0, 0, 0, 0],
+            wind_resistance_coefficient,
+            (wind_speed + 127) as u8,
+            drafting_factor,
+        ).pack().unwrap()).into();
+        message.set_channel(self.msg_handler.get_channel());
+        self.tx.try_send(message.into())?;
+        Ok(())
+    }
+
+    pub fn set_track_resistance(
+        &mut self,
+        grade: i16,
+        coefficient_of_rolling_resistance: f32,
+    ) -> Result<(), TxError> {
+        let mut message: TxMessageData = AcknowledgedData::new(0, TrackResistanceDataPage::new(
+            0x32,
+            [0, 0, 0, 0],
+            (grade + 200 * 100) as u16,
+            (coefficient_of_rolling_resistance * 20000.0) as u8,
+        ).pack().unwrap()).into();
+        message.set_channel(self.msg_handler.get_channel());
+        self.tx.try_send(message.into())?;
+        Ok(())
+    }
+
     pub fn set_power_target(&mut self, power: u16) -> Result<(), TxError> {
         let power: u16 = power * 4;
-        let mut message: TxMessageData = AcknowledgedData::new(0, [
+        let mut message: TxMessageData = AcknowledgedData::new(0, TargetPowerDataPage::new(
             0x31,
-            0x00,
-            0x00,
-            0x00,
-            0x00,
-            0x00,
-            (power & 0xFF) as u8,
-            (power >> 8) as u8,
-        ]).into();
+            [0, 0, 0, 0, 0],
+            power,
+        ).pack().unwrap()).into();
         message.set_channel(self.msg_handler.get_channel());
         self.tx.try_send(message.into())?;
         Ok(())

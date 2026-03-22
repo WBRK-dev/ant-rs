@@ -328,7 +328,7 @@ pub struct AdvancedBurstCapabilities {
     pub supported_features: SupportedFeatures,
 }
 
-#[derive(PackedStruct, Debug, Clone, PartialEq)]
+#[derive(PackedStruct, Debug, Clone, Copy, PartialEq)]
 #[packed_struct(bit_numbering = "msb0", endian = "lsb", size_bytes = "4")]
 pub struct SerialNumber {
     #[packed_field(bytes = "0:3")]

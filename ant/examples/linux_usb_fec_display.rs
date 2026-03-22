@@ -115,6 +115,7 @@ fn main() -> std::io::Result<()> {
 
     let mut last_send_time = Instant::now();
     let mut resistance_multiplier = 2;
+    let mut has_set_init_values = false;
 
     loop {
         router.process().unwrap();
@@ -122,6 +123,14 @@ fn main() -> std::io::Result<()> {
 
         // Every 5 seconds, increase the target power by 50 watts
         if last_send_time.elapsed() >= Duration::from_secs(5) {
+            if !has_set_init_values {
+                tacx.set_user_configuration(70, 0, 12, 68, 0).unwrap();
+                // tacx.set_basic_resistance(20).unwrap();
+                // tacx.set_track_resistance(0, 0.002).unwrap();
+                // tacx.set_wind_resistance(0).unwrap();
+                has_set_init_values = true;
+            }
+
             let target_power = 50 * resistance_multiplier;
             println!("Setting power target to {} watts", target_power);
 

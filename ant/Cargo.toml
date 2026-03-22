@@ -21,7 +21,7 @@ ant-derive = { path = "../ant-derive", version = "0.1" }
 embedded-hal = "1.0"
 embedded-hal-nb = "1.0"
 nb = "1.1"
-rusb = {version = "0.9", optional = true}
+rusb = {version = "=0.9.3", optional = true}
 derive-new = {version = "0.6", default-features = false}
 
 [dev-dependencies]
@@ -38,4 +38,3 @@ usb_adapter = ["dep:rusb", "usb"]
 
 [[test]]
 name = "serial"
-

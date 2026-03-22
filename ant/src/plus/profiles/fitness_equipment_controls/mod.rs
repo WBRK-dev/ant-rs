@@ -38,6 +38,10 @@ pub enum MonitorTxDataPage {
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum DisplayTxDataPage {
     // ManufacturerSpecific(ManufacturerSpecific),
+    UserConfigurationDataPage(UserConfigurationDataPage),
+    BasicResistanceDataPage(BasicResistanceDataPage),
+    WindResistanceDataPage(WindResistanceDataPage),
+    TrackResistanceDataPage(TrackResistanceDataPage),
     TargetPowerDataPage(TargetPowerDataPage),
 }
 
